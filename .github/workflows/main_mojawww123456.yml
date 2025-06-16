@@ -1,0 +1,68 @@
+name: Build and deploy Python app to Azure Web App - mojawww123456
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Zip artifact
+        run: zip release.zip ./* -r
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: release.zip
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'Production'
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+
+      - name: Unzip
+        run: unzip release.zip
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_32565F82B2A240028DFCFE7D99825503 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_80A4D8AE2B2490481E5CEBB709E75EF6 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1ABDF85C0A824920B5B875A43541720B }}
+
+      - name: Deploy
+        uses: azure/webapps-deploy@v3
+        id: deploy-to-webapp
+        with:
+          app-name: 'mojawww123456'
+          slot-name: 'Production'
+          package: release.zip
